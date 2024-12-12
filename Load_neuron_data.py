@@ -9,15 +9,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def load_mat_file(file_path):
-    """
-    Load a MATLAB .mat file and return the data.
-    
-    Args:
-        file_path (str): Path to the .mat file.
-    
-    Returns:
-        dict: Data loaded from the .mat file.
-    """
     try:
         mat_data = sio.loadmat(file_path)
         logger.info("Successfully loaded .mat file.")
@@ -26,21 +17,12 @@ def load_mat_file(file_path):
         logger.error(f"Error loading .mat file: {e}")
         raise
 
-def sequence_target(N_activity, seq_length):
-    """
-    Create sequences of data.
-    
-    Args:
-        N_activity (np.array): The input data.
-        seq_length (int): Length of each sequence.
-    
-    Returns:
-        tuple: (X, y) arrays of input sequences and targets.
-    """
+def sequence_target(N_activity, seq_length, future_steps):
+
     X, y = [], []
-    for i in range(len(N_activity) - seq_length):
+    for i in range(len(N_activity) - seq_length - future_steps):  # Adjust for future_steps
         X.append(N_activity[i:i+seq_length])
-        y.append(N_activity[i+seq_length])
+        y.append(N_activity[i+seq_length:i+seq_length+future_steps])  # Predict future_steps ahead
     
     X = np.array(X, dtype=np.float32)
     y = np.array(y, dtype=np.float32)
@@ -51,17 +33,9 @@ def sequence_target(N_activity, seq_length):
     
     return X, y
 
-def preprocess_data(mat_data, seq_length):
-    """
-    Preprocess data by converting to DataFrame, transposing, and creating sequences.
-    
-    Args:
-        mat_data (dict): Data loaded from the .mat file.
-        seq_length (int): Length of the sequences to create.
-    
-    Returns:
-        tuple: (X_train, X_test, y_train, y_test) datasets split for training and testing.
-    """
+
+def preprocess_data(mat_data, seq_length, future_steps):
+
     try:
         activity_data = mat_data['spk_arr']
         df = pd.DataFrame(activity_data, columns=[f'neuron{i + 1}' for i in range(activity_data.shape[1])])
@@ -74,7 +48,8 @@ def preprocess_data(mat_data, seq_length):
         logger.error(f"Error in data processing: {e}")
         raise
 
-    X, y = sequence_target(N_activity, seq_length)
+    # Use future_steps in the sequence_target function to create sequences
+    X, y = sequence_target(N_activity, seq_length, future_steps)
     logger.info(f"Sequences created. Shapes - X: {X.shape}, y: {y.shape}")
 
     if X.size > 0 and y.size > 0:
